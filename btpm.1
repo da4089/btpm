@@ -1,0 +1,106 @@
+.\"############################################################################
+.\" COPYRIGHT_BEGIN
+.\"
+.\" btpm - Bluetooth Presence Monitor
+.\"
+.\" Copyright (C) 2004 David Arnold.
+.\" All rights reserved.
+.\"
+.\" btpm is free software; you can redistribute it and/or modify it
+.\" under the terms of the GNU General Public License version 2 as
+.\" published by the Free Software Foundation.
+.\"
+.\" btpm is distributed in the hope that it will be useful, but WITHOUT
+.\" ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+.\" or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+.\" License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with btpm; if not, write to the Free Software Foundation,
+.\" Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+.\"
+.\" COPYRIGHT_END
+.\"############################################################################
+.\"
+.TH btpm 1 "August 2004"
+.SH NAME
+btpm \- Bluetooth Presence Monitor 
+.SH SYNOPSIS
+.BR "btpm" " [options]"
+.\"
+.SH FLAGS
+.PP
+.TP 4
+\-h
+prints a simple description of legal syntax and functions.
+.TP 4
+\-v
+prints the version number of the program.
+.TP 4
+\-d
+Debug.  This flag will prevent the program from detaching from the
+terminal, and will cause logging messages to be written to stdout.
+Repeated use of this flag increases the detail of the debugging
+messages.
+.TP 4
+\-e url
+Specifies an Elvin Router address that should be used for the presence
+notifications.  Multiple URLs may be supplied: they will be attempted in
+the supplied order.
+.TP 4
+\-f facility
+Sets the \fBsyslog\fP facility used to log messages when running in
+daemon mode.
+.TP 4
+\-i seconds
+Sets the interval between scans for devices.  Defaults to 60.  In
+seconds.
+.TP 4
+\-l location
+The presence notifications include the identifier of a location.  This
+option specifies that identifier.  By default, the location is given
+as the host name.
+.TP 4
+\-p pidfile
+When running in daemon mode, the program writes its PID to a file.
+This option overrides the default location for that file.  By default,
+if running as root, the pidfile is \fI/var/run/btpm.pid\fP, and if not root,
+\fI/tmp/btpm-\fPuser\fI.pid\fP.
+.TP 4
+\-S scope
+Sets an Elvin Router scope name, used to discover an Elvin Router.
+Can be used instead of or together with the \fI-e\fP option.
+.TP 4
+\-k
+Kills the currently running daemon, if one is found.  Uses the PID
+file written at daemon startup, whose location can be overridden
+with the \fI-p\fP option.
+.\"
+.SH DESCRIPTION
+.PP
+.B btpm
+is a small daemon program that periodically scans for Bluetooth
+devices, and reports those newly present or absent using Elvin
+notifications.
+.\"
+.SH ENVIRONMENT
+.PP
+.TP 4
+.B "ELVINURL"
+To get the default host, display number, and screen.
+.TP 4
+.B "ELVINSCOPE"
+Sets the Elvin scope name.
+.\"
+.SH "SEE ALSO"
+.PP
+.BR hcitool (1),
+.BR elvin (7)
+.\"
+.SH AUTHOR
+.PP
+David Arnold, (davida@pobox.com)
+.br
+http://0x1.org/d/projects/btpm
+
+.\" ***************************************************************

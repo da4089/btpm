@@ -1,0 +1,9 @@
+Makefile
+autom4te.cache
+*.tar.gz
+config.log
+config.status
+configure
+install-sh
+missing
+mkinstalldirs

@@ -1,0 +1,9 @@
+btpm
+
+btpm is a small daemon program that periodically scans for Bluetooth
+devices, and reports those newly present or absent using Elvin
+notifications.
+
+It requires Python, Python Elvin, and the Linux BlueZ hcitool utility.
+
+For more information, see http://0x1.org/d/projects/btpm

@@ -1,0 +1,67 @@
+# COPYRIGHT_BEGIN
+#
+# btpm - Bluetooth Presence Monitor
+#
+# Copyright (C) 2004 David Arnold.
+# All rights reserved.
+#
+# This file is part of btpm.
+#
+# btpm is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# btpm is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with btpm; if not, write to the Free Software Foundation,
+# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+#
+# COPYRIGHT_END
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+install=@INSTALL@
+mandir=@mandir@
+
+pkgdir=@PACKAGE_NAME@-@PACKAGE_VERSION@
+pkgfiles=\
+	btpm \
+	btpm.1 \
+	configure.ac \
+	configure \
+	Makefile.in \
+	README \
+	COPYING \
+	install-sh \
+	mkinstalldirs \
+	missing
+
+.PHONY: all install config dist
+
+all:
+	@echo Use make install to install, make dist to package.
+
+install:
+	$(install) btpm $(bindir)
+	$(install) btpm.1 $(mandir)/man8
+
+config:
+	autoconf
+	./configure
+
+dist: config
+	mkdir $(pkgdir)
+	cp $(pkgfiles) $(pkgdir)
+	tar zcvf $(pkgdir).tar.gz $(pkgdir)
+	rm -r $(pkgdir)
+
+distclean:
+	rm -rf Makefile config.log config.status autom4te.cache
+
+clobber: distclean
+	rm -f configure

@@ -1,0 +1,331 @@
+#! /usr/bin/env python
+########################################################################
+# COPYRIGHT_BEGIN
+#
+# btpm - Bluetooth Presence Monitor
+#
+# Copyright (C) 2004 David Arnold.
+# All rights reserved.
+#
+# This file is part of btpm.
+#
+# btpm is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# btpm is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+# License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with btpm; if not, write to the Free Software Foundation,
+# Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+#
+# COPYRIGHT_END
+########################################################################
+
+# periodically run 'hcitool scan' to get list of available devices.
+# emit events for newly present or departed devices.
+
+import elvin, popen2, socket, sys, time
+
+
+SCAN_INTERVAL = 10
+PID_FILE = "/var/run/btpd.pid"
+VERSION = "1.0.0"
+USAGE = """btpd [options]
+
+-d           debug: run in foreground, print debug messages
+-e url       specify Elvin Router by URL
+-f facility  syslog facility
+-h           print help and exit
+-i seconds   time between scans in seconds
+-l location  location identifier (see below)
+-p pidfile   path to PID file
+-S scope     specify Elvin Router by scope
+-k           kill running daemon
+-v           print version and exit
+
+The Bluetooth Presence Daemon (btpd) uses an available Linux BlueZ
+interface to scan for discoverable devices within range.  Newly
+discovered devices are reported, as are previously present devices
+that are no longer responding.
+
+The location setting (-l) is used to specify the identifier for the
+location that contains the range of the Bluetooth device.  This would
+normally be a room, or apartment/house, but in the case of a portable
+computer, could be the abstract container representing the range of
+the Bluetooth device.  For more details of the location system, see
+loc(1), locd(8), and http://0x1.org/d/projects/locator
+"""
+
+
+########################################################################
+
+class HCIDevice:
+
+    def __init__(self, name, addr, now=None):
+
+        # MAC address
+        self._address = addr
+
+        # name (if any)
+        self._name = name
+
+        # timestamp of scan when last seen
+        self._last_seen = now or time.time()
+
+        # timestamp of first contiguous scan
+        self._when_seen = self._last_seen
+
+        # flag missing for one or more scans
+        self._missing = 0
+        
+        return
+
+
+    def name(self):
+        return self._name
+
+    def address(self):
+        return self._address
+
+    def last_seen(self):
+        return self._last_seen
+    
+    def present(self):
+        if self._missing:
+            return 0
+
+        return self._last_seen - self._when_seen
+
+    def missing(self):
+        return self._missing
+
+
+    def refresh(self, when=None):
+        if not when:
+            when = time.time()
+
+        self._last_seen = when
+        self._missing = 0
+        return
+
+
+    def miss(self):
+        self._missing = 1
+        return
+
+
+########################################################################
+    
+class HCIScanner:
+
+    def __init__(self):
+
+        # initialise
+        self._debug = 0
+        self._urls = []
+        self._scope = None
+        self._location = None
+        self._pidifle = PID_FILE
+        self._interval = SCAN_INTERVAL
+        
+        self._devices = {}
+
+        # scan command-line args
+        self.parse_args()
+        self.log("Starting.")
+
+        # check location
+        if not self._location:
+            self._location = socket.gethostbyaddr(socket.gethostbyname(socket.gethostname()))[0]
+            
+        # connect to Elvin
+        self._client = elvin.client()
+        self._elvin = self._client.connection()
+
+        if self._scope:
+            self._elvin.set_scope(self._scope)
+
+        if self._urls:
+            for url in self._urls:
+                self._elvin.append_url(url)
+
+        if self._debug:
+            self._elvin.add_connection_listener(elvin.SimpleConnectionListener())
+        else:
+            pass
+        
+        self._elvin.set_max_retries(-1)
+        self._elvin.open()
+
+        # schedule scan
+        self._elvin.add_timeout(0, self.scan)
+
+        # mainloop
+        self._elvin.run()
+
+        # cleanup
+        self._elvin.close()
+        return
+
+
+    def parse_args(self):
+        """Parse command-line arguments"""
+
+        args = sys.argv[1:]
+        while args:
+            arg = args[0]
+            args = args[1:]
+
+            if arg == "-d":
+                self._debug += 1
+            
+            elif arg == "-h":
+                self.usage(sys.stdout)
+                sys.exit(0)
+
+            elif arg == "-v":
+                print VERSION
+                sys.exit(0)
+                
+            elif arg == "-e":
+                if not args:
+                    self.usage(sys.stderr, "-e requires URL parameter")
+                    sys.exit(1)
+
+                self._urls.append(args[0])
+                args = args[1:]
+
+            elif arg == "-S":
+                if not args:
+                    self.usage(sys.stderr, "-S requires scope name parameter")
+                    sys.exit(1)
+
+                self._scope = args[0]
+                args = args[1:]
+                print "after scope", args
+
+            elif arg == "-l":
+                if not args:
+                    self.usage(sys.stderr, "-l required location id parameter")
+                    sys.exit(1)
+
+                self._location = args[0]
+                args = args[1:]
+
+            else:
+                self.usage(sys.stderr, "unknown argument: %s" % arg)
+                sys.exit(1)
+                
+        return
+
+
+    def scan(self, timeout, rock):
+        """Scan available Bluetooth devices."""
+
+        #print "da: Scanning ..."
+        fout, fin = popen2.popen2("hcitool scan")
+        fin.close()
+        l = fout.readlines()
+        fout.close()
+
+        self.record(l[1:])
+
+        self._elvin.add_timeout(SCAN_INTERVAL, self.scan)
+        return
+
+
+    def record(self, devices):
+
+        # timestamp
+        now = time.time()
+
+        # list of seen devices
+        seen = []
+
+        # process string list
+        for line in devices:
+            addr, name = line.strip().split(None, 1)
+            #print "->", name, "[" + addr + "]"
+
+            # update database
+            if self._devices.has_key(addr):
+                was_missing = self._devices[addr].missing()
+                self._devices[addr].refresh(now)
+                if was_missing:
+                    self.notify_present(addr)
+                
+            else:
+                self._devices[addr] = HCIDevice(name, addr, now)
+                self.notify_present(addr)
+
+            # add to seen list
+            seen.append(addr)
+
+        # record misses
+        for addr in self._devices.keys():
+            if addr not in seen:
+                if not self._devices[addr].missing():
+                    self._devices[addr].miss()
+                    self.notify_missing(addr)
+                
+        return
+
+
+    def notify_present(self, addr):
+        """Report newly present device"""
+
+        obj = self._devices[addr]
+        
+        msg = elvin.message()
+        msg.put("Object-Id", obj.address())
+        msg.put("Name", obj.name())
+        msg.put("Location-Id", self._location)
+        msg.put("State", "present")
+        msg.put("Time", obj.last_seen())
+
+        self._elvin.notify(msg)
+        return
+
+
+    def notify_missing(self, addr):
+        """Report newly absent device"""
+
+        obj = self._devices[addr]
+        
+        msg = elvin.message()
+        msg.put("Object-Id", obj.address())
+        msg.put("Name", obj.name())
+        msg.put("Location-Id", self._location)
+        msg.put("State", "absent")
+        msg.put("Time", obj.last_seen())
+
+        self._elvin.notify(msg)
+        return
+
+
+    def usage(self, file, error=None):
+        if error:
+            file.write("Error: %s\n\n" % error)
+
+        file.write("%s\n" % USAGE)
+        return
+
+
+    def log(self, msg):
+        if self._debug:
+            sys.stderr.write("%s\n" % msg)
+            sys.stderr.flush()
+
+        return
+
+
+########################################################################
+
+s = HCIScanner()
+
+
+########################################################################

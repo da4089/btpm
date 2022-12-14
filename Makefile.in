@@ -28,6 +28,7 @@ bindir=@bindir@
 install=@INSTALL@
 mandir=@mandir@
 datarootdir=@datarootdir@
+srcdir=@srcdir@
 
 pkgdir=@PACKAGE_NAME@-@PACKAGE_VERSION@
 pkgfiles=\
@@ -46,7 +47,9 @@ all:
 	@echo Use make install to install, make dist to package.
 
 install:
+	$(srcdir)/install-sh -d $(bindir)
 	$(install) btpm $(bindir)
+	$(srcdir)/install-sh -d $(mandir)/man1
 	$(install) btpm.1 $(mandir)/man1
 
 config:

@@ -33,7 +33,7 @@ import elvin, popen2, socket, sys, time
 
 SCAN_INTERVAL = 10
 PID_FILE = "/var/run/btpd.pid"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 USAGE = """btpd [options]
 
 -d           debug: run in foreground, print debug messages
@@ -81,7 +81,7 @@ class HCIDevice:
 
         # flag missing for one or more scans
         self._missing = 0
-        
+
         return
 
 
@@ -93,7 +93,7 @@ class HCIDevice:
 
     def last_seen(self):
         return self._last_seen
-    
+
     def present(self):
         if self._missing:
             return 0
@@ -119,7 +119,7 @@ class HCIDevice:
 
 
 ########################################################################
-    
+
 class HCIScanner:
 
     def __init__(self):
@@ -131,7 +131,7 @@ class HCIScanner:
         self._location = None
         self._pidifle = PID_FILE
         self._interval = SCAN_INTERVAL
-        
+
         self._devices = {}
 
         # scan command-line args
@@ -141,7 +141,7 @@ class HCIScanner:
         # check location
         if not self._location:
             self._location = socket.gethostbyaddr(socket.gethostbyname(socket.gethostname()))[0]
-            
+
         # connect to Elvin
         self._client = elvin.client()
         self._elvin = self._client.connection()
@@ -157,7 +157,7 @@ class HCIScanner:
             self._elvin.add_connection_listener(elvin.SimpleConnectionListener())
         else:
             pass
-        
+
         self._elvin.set_max_retries(-1)
         self._elvin.open()
 
@@ -182,15 +182,15 @@ class HCIScanner:
 
             if arg == "-d":
                 self._debug += 1
-            
+
             elif arg == "-h":
                 self.usage(sys.stdout)
                 sys.exit(0)
 
             elif arg == "-v":
-                print VERSION
+                print(VERSION)
                 sys.exit(0)
-                
+
             elif arg == "-e":
                 if not args:
                     self.usage(sys.stderr, "-e requires URL parameter")
@@ -206,7 +206,7 @@ class HCIScanner:
 
                 self._scope = args[0]
                 args = args[1:]
-                print "after scope", args
+                print("after scope", args)
 
             elif arg == "-l":
                 if not args:
@@ -219,14 +219,14 @@ class HCIScanner:
             else:
                 self.usage(sys.stderr, "unknown argument: %s" % arg)
                 sys.exit(1)
-                
+
         return
 
 
     def scan(self, timeout, rock):
         """Scan available Bluetooth devices."""
 
-        #print "da: Scanning ..."
+        #print("da: Scanning ...")
         fout, fin = popen2.popen2("hcitool scan")
         fin.close()
         l = fout.readlines()
@@ -249,7 +249,7 @@ class HCIScanner:
         # process string list
         for line in devices:
             addr, name = line.strip().split(None, 1)
-            #print "->", name, "[" + addr + "]"
+            #print("->", name, "[" + addr + "]")
 
             # update database
             if self._devices.has_key(addr):
@@ -257,7 +257,7 @@ class HCIScanner:
                 self._devices[addr].refresh(now)
                 if was_missing:
                     self.notify_present(addr)
-                
+
             else:
                 self._devices[addr] = HCIDevice(name, addr, now)
                 self.notify_present(addr)
@@ -271,7 +271,7 @@ class HCIScanner:
                 if not self._devices[addr].missing():
                     self._devices[addr].miss()
                     self.notify_missing(addr)
-                
+
         return
 
 
@@ -279,7 +279,7 @@ class HCIScanner:
         """Report newly present device"""
 
         obj = self._devices[addr]
-        
+
         msg = elvin.message()
         msg.put("Object-Id", obj.address())
         msg.put("Name", obj.name())
@@ -295,7 +295,7 @@ class HCIScanner:
         """Report newly absent device"""
 
         obj = self._devices[addr]
-        
+
         msg = elvin.message()
         msg.put("Object-Id", obj.address())
         msg.put("Name", obj.name())

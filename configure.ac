@@ -22,8 +22,7 @@
 #
 # COPYRIGHT_END
 
-AC_REVISION($Revision: 1.1 $)
-AC_INIT([btpm], [1.0.0], [davida@pobox.com])
+AC_INIT([btpm], [1.0.1], [davida@pobox.com])
 AC_PROG_INSTALL
 #AC_PATH_PROG(PYTHON, [python2 python], no)
 #AC_SUBST(PYTHON)

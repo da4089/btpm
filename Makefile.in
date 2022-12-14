@@ -27,6 +27,7 @@ exec_prefix=@exec_prefix@
 bindir=@bindir@
 install=@INSTALL@
 mandir=@mandir@
+datarootdir=@datarootdir@
 
 pkgdir=@PACKAGE_NAME@-@PACKAGE_VERSION@
 pkgfiles=\
@@ -37,9 +38,7 @@ pkgfiles=\
 	Makefile.in \
 	README \
 	COPYING \
-	install-sh \
-	mkinstalldirs \
-	missing
+	install-sh
 
 .PHONY: all install config dist
 
@@ -61,7 +60,7 @@ dist: config
 	rm -r $(pkgdir)
 
 distclean:
-	rm -rf Makefile config.log config.status autom4te.cache
+	rm -rf Makefile config.log config.status autom4te.cache $(pkgdir)
 
 clobber: distclean
 	rm -f configure

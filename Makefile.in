@@ -48,7 +48,7 @@ all:
 
 install:
 	$(install) btpm $(bindir)
-	$(install) btpm.1 $(mandir)/man8
+	$(install) btpm.1 $(mandir)/man1
 
 config:
 	autoconf
